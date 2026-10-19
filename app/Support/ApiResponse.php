@@ -18,7 +18,7 @@ final class ApiResponse
     }
 
     /**
-     * @param array<string, list<string>>|null $errors
+     * @param  array<string, list<string>>|null  $errors
      */
     public static function error(string $message, int $status, ?array $errors = null): JsonResponse
     {

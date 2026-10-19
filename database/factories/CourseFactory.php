@@ -30,7 +30,7 @@ class CourseFactory extends Factory
     public function definition(): array
     {
         return [
-            'title' => fake()->randomElement(self::TOPICS) . ' ' . fake()->randomElement(self::FORMATS),
+            'title' => fake()->randomElement(self::TOPICS).' '.fake()->randomElement(self::FORMATS),
             'description' => fake()->paragraph(),
             'price' => fake()->randomFloat(2, 0, 200),
             'is_published' => fake()->boolean(70),
@@ -50,7 +50,7 @@ class CourseFactory extends Factory
     public function withTopic(string $topic): static
     {
         return $this->state(fn (): array => [
-            'title' => $topic . ' ' . fake()->randomElement(self::FORMATS),
+            'title' => $topic.' '.fake()->randomElement(self::FORMATS),
         ]);
     }
 }

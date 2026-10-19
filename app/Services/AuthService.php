@@ -13,7 +13,7 @@ final class AuthService
     private const TOKEN_NAME = 'api-token';
 
     /**
-     * @param array<string, mixed> $data
+     * @param  array<string, mixed>  $data
      */
     public function register(array $data): User
     {
