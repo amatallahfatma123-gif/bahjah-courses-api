@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use Database\Factories\CourseFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -32,5 +33,38 @@ class Course extends Model
             'price' => 'decimal:2',
             'is_published' => 'boolean',
         ];
+    }
+
+    /**
+     * @param  Builder<Course>  $query
+     * @return Builder<Course>
+     */
+    public function scopeSearch(Builder $query, ?string $term): Builder
+    {
+        $term = trim((string) $term);
+
+        if ($term === '') {
+            return $query;
+        }
+
+        return $query->where('title', 'like', '%'.addcslashes($term, '\\%_').'%');
+    }
+
+    /**
+     * @param  Builder<Course>  $query
+     * @return Builder<Course>
+     */
+    public function scopePublished(Builder $query, bool $published = true): Builder
+    {
+        return $query->where('is_published', $published);
+    }
+
+    /**
+     * @param  Builder<Course>  $query
+     * @return Builder<Course>
+     */
+    public function scopeLatestFirst(Builder $query): Builder
+    {
+        return $query->orderByDesc('created_at')->orderByDesc('id');
     }
 }
