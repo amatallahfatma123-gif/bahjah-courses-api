@@ -13,5 +13,5 @@ Route::middleware('throttle:10,1')->group(function (): void {
 
 Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('logout', [AuthController::class, 'logout']);
-    Route::apiResource('courses', CourseController::class)->only(['index', 'show']);
+    Route::apiResource('courses', CourseController::class);
 });
