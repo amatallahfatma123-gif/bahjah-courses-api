@@ -26,4 +26,27 @@ final class CourseService
             ->latestFirst()
             ->paginate($perPage ?? self::DEFAULT_PER_PAGE);
     }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    public function create(array $data): Course
+    {
+        return Course::query()->create($data)->refresh();
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    public function update(Course $course, array $data): Course
+    {
+        $course->update($data);
+
+        return $course->refresh();
+    }
+
+    public function delete(Course $course): void
+    {
+        $course->delete();
+    }
 }
