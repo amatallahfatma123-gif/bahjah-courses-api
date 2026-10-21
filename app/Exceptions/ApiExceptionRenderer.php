@@ -46,15 +46,19 @@ final class ApiExceptionRenderer
                 return null;
             }
 
-            $status = $e instanceof HttpExceptionInterface
-                ? $e->getStatusCode()
-                : Response::HTTP_INTERNAL_SERVER_ERROR;
+            $status = Response::HTTP_INTERNAL_SERVER_ERROR;
+            $headers = [];
+
+            if ($e instanceof HttpExceptionInterface) {
+                $status = $e->getStatusCode();
+                $headers = $e->getHeaders();
+            }
 
             $message = $status >= Response::HTTP_INTERNAL_SERVER_ERROR
                 ? 'Server Error'
                 : (Response::$statusTexts[$status] ?? 'Error');
 
-            return ApiResponse::error($message, $status);
+            return ApiResponse::error($message, $status, null, $headers);
         });
     }
 

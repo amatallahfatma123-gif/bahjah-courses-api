@@ -19,8 +19,9 @@ final class ApiResponse
 
     /**
      * @param  array<string, list<string>>|null  $errors
+     * @param  array<string, string>  $headers
      */
-    public static function error(string $message, int $status, ?array $errors = null): JsonResponse
+    public static function error(string $message, int $status, ?array $errors = null, array $headers = []): JsonResponse
     {
         $payload = [
             'success' => false,
@@ -32,6 +33,6 @@ final class ApiResponse
             $payload['errors'] = $errors;
         }
 
-        return response()->json($payload, $status);
+        return response()->json($payload, $status, $headers);
     }
 }
