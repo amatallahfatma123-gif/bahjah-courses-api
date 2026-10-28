@@ -10,6 +10,7 @@ use App\Http\Requests\Course\StoreCourseRequest;
 use App\Http\Requests\Course\UpdateCourseRequest;
 use App\Http\Resources\CourseResource;
 use App\Models\Course;
+use App\Models\User;
 use App\Services\CourseService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -31,7 +32,10 @@ final class CourseController extends Controller
 
     public function store(StoreCourseRequest $request): JsonResponse
     {
-        $course = $this->courseService->create($request->validated());
+        /** @var User $user */
+        $user = $request->user();
+
+        $course = $this->courseService->create($user, $request->validated());
 
         return ApiResponse::success('Course created successfully', new CourseResource($course), 201);
     }
