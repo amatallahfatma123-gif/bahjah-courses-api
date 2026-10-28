@@ -14,10 +14,23 @@ use App\Models\User;
 use App\Services\CourseService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Routing\Controllers\HasMiddleware;
+use Illuminate\Routing\Controllers\Middleware;
 
-final class CourseController extends Controller
+final class CourseController extends Controller implements HasMiddleware
 {
     public function __construct(private readonly CourseService $courseService) {}
+
+    /**
+     * @return list<Middleware>
+     */
+    public static function middleware(): array
+    {
+        return [
+            new Middleware('can:update,course', only: ['update']),
+            new Middleware('can:delete,course', only: ['destroy']),
+        ];
+    }
 
     public function index(IndexCourseRequest $request): JsonResponse
     {
