@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Bahjah Courses API",
-    "description": "Postman collection for the Bahjah Courses API (Laravel 12 + Sanctum). Run Auth > Login first: it stores the token used by every other request.",
+    "description": "Postman collection for the Bahjah Courses API (Laravel 12 + Sanctum). Run Auth > Login first: it stores the token used by every other request. Seeded users: test@example.com and other@example.com, both with the password `password`.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -25,6 +25,14 @@
     },
     {
       "key": "course_id",
+      "value": ""
+    },
+    {
+      "key": "token_other",
+      "value": ""
+    },
+    {
+      "key": "owned_course_id",
       "value": ""
     }
   ],
@@ -78,7 +86,8 @@
                   "const json = pm.response.json();",
                   "if (json.data && json.data.token) {",
                   "    pm.collectionVariables.set('token', json.data.token);",
-                  "}"
+                  "}",
+                  "pm.test('Status is 201', function () { pm.response.to.have.status(201); });"
                 ]
               }
             }
@@ -130,7 +139,8 @@
                   "const json = pm.response.json();",
                   "if (json.data && json.data.token) {",
                   "    pm.collectionVariables.set('token', json.data.token);",
-                  "}"
+                  "}",
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });"
                 ]
               }
             }
@@ -161,7 +171,18 @@
               ]
             },
             "description": "Expected: 200. Paginated, newest first, 5 per page."
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "List courses - page 2",
@@ -188,7 +209,18 @@
                 }
               ]
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "List courses - search",
@@ -215,7 +247,18 @@
                 }
               ]
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "List courses - published only",
@@ -242,7 +285,18 @@
                 }
               ]
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "List courses - published + search + per_page",
@@ -277,7 +331,18 @@
                 }
               ]
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Create course",
@@ -322,7 +387,8 @@
                   "const json = pm.response.json();",
                   "if (json.data && json.data.id) {",
                   "    pm.collectionVariables.set('course_id', json.data.id);",
-                  "}"
+                  "}",
+                  "pm.test('Status is 201', function () { pm.response.to.have.status(201); });"
                 ]
               }
             }
@@ -349,7 +415,18 @@
               ]
             },
             "description": "Expected: 200 (404 if the course was deleted)."
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Update course (PUT)",
@@ -385,7 +462,18 @@
               }
             },
             "description": "Expected: 200."
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Update course (PATCH)",
@@ -421,7 +509,18 @@
               }
             },
             "description": "Expected: 200. Only the sent field changes."
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Delete course",
@@ -444,7 +543,18 @@
               ]
             },
             "description": "Expected: 200."
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Create course - validation error",
@@ -479,7 +589,18 @@
               }
             },
             "description": "Expected: 422 with errors.title."
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 422', function () { pm.response.to.have.status(422); });"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "List courses - no token",
@@ -504,7 +625,352 @@
               "type": "noauth"
             },
             "description": "Expected: 401 Unauthenticated."
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 401', function () { pm.response.to.have.status(401); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Ownership",
+      "item": [
+        {
+          "name": "Login (second user)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"other@example.com\",\n  \"password\": \"password\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Expected: 200. Stores the second user's token in `token_other`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.token) {",
+                  "    pm.collectionVariables.set('token_other', json.data.token);",
+                  "}",
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create course as first user",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/courses",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "courses"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Ownership demo course\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Expected: 201. The owner is the first user. Stores the id in `owned_course_id`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.id) {",
+                  "    pm.collectionVariables.set('owned_course_id', json.data.id);",
+                  "}",
+                  "pm.test('Status is 201', function () { pm.response.to.have.status(201); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update someone else's course (PUT)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/courses/{{owned_course_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "courses",
+                "{{owned_course_id}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Hijacked\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_other}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Expected: 403 Forbidden (the second user is not the owner)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 403', function () { pm.response.to.have.status(403); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete someone else's course",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/courses/{{owned_course_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "courses",
+                "{{owned_course_id}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_other}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Expected: 403 Forbidden."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 403', function () { pm.response.to.have.status(403); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Show someone else's course",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/courses/{{owned_course_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "courses",
+                "{{owned_course_id}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_other}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Expected: 200. Reading is open to every authenticated user."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update own course (owner)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/courses/{{owned_course_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "courses",
+                "{{owned_course_id}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Ownership demo course (edited)\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Expected: 200. The owner can update."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete own course (owner)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/courses/{{owned_course_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "courses",
+                "{{owned_course_id}}"
+              ]
+            },
+            "description": "Expected: 200. The owner can delete."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -531,7 +997,18 @@
               ]
             },
             "description": "Expected: 200. Deletes the current token (this folder runs last so the other requests keep a valid token). Log in again afterwards."
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
         }
       ]
     }
