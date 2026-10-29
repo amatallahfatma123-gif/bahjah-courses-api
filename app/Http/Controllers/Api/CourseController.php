@@ -10,13 +10,27 @@ use App\Http\Requests\Course\StoreCourseRequest;
 use App\Http\Requests\Course\UpdateCourseRequest;
 use App\Http\Resources\CourseResource;
 use App\Models\Course;
+use App\Models\User;
 use App\Services\CourseService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Routing\Controllers\HasMiddleware;
+use Illuminate\Routing\Controllers\Middleware;
 
-final class CourseController extends Controller
+final class CourseController extends Controller implements HasMiddleware
 {
     public function __construct(private readonly CourseService $courseService) {}
+
+    /**
+     * @return list<Middleware>
+     */
+    public static function middleware(): array
+    {
+        return [
+            new Middleware('can:update,course', only: ['update']),
+            new Middleware('can:delete,course', only: ['destroy']),
+        ];
+    }
 
     public function index(IndexCourseRequest $request): JsonResponse
     {
@@ -31,7 +45,10 @@ final class CourseController extends Controller
 
     public function store(StoreCourseRequest $request): JsonResponse
     {
-        $course = $this->courseService->create($request->validated());
+        /** @var User $user */
+        $user = $request->user();
+
+        $course = $this->courseService->create($user, $request->validated());
 
         return ApiResponse::success('Course created successfully', new CourseResource($course), 201);
     }

@@ -7,12 +7,13 @@ Submitted as a technical assessment (Junior Backend Developer, Laravel).
 
 - Token authentication with Laravel Sanctum: register, login, logout
 - Courses CRUD (create, list, show, update, delete), all protected by `auth:sanctum`
+- Course ownership: every course belongs to the user who created it, and only the owner can update or delete it (`CoursePolicy`, `403` for everyone else)
 - List endpoint with search by title, pagination, newest-first sorting and an optional `published` filter
 - API Resources for every response (models are never returned directly)
-- One unified JSON response format for success and errors (422, 401, 404, 405, 429, 500)
+- One unified JSON response format for success and errors (422, 401, 403, 404, 405, 429, 500)
 - Form Requests for validation, and a Service layer for business logic
 - Rate limiting on `register` and `login` (10 requests per minute per IP)
-- Database seeder: 10 sample courses and one test user
+- Database seeder: 10 sample courses owned by two test users
 - No starter kit (no Breeze, Jetstream or Laravel UI)
 
 ## Requirements
@@ -20,13 +21,14 @@ Submitted as a technical assessment (Junior Backend Developer, Laravel).
 - PHP 8.2 or higher with the extensions: `pdo_mysql`, `mbstring`, `openssl`, `tokenizer`, `xml`, `ctype`, `json`, `fileinfo`, `curl`
 - Composer 2
 - MySQL 8 or MariaDB 10.6+
+- The `pdo_sqlite` extension, only needed to run the tests (see [Tests](#tests))
 
 > **Why Laravel 12?** The development environment runs PHP 8.2, and Laravel 13 requires PHP 8.3 or higher. Laravel 12 is the newest release that supports PHP 8.2, and it covers everything this task needs.
 
 ## Installation
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/amatallahfatma123-gif/bahjah-courses-api.git
 cd bahjah-courses-api
 composer install
 cp .env.example .env
@@ -82,9 +84,11 @@ On Windows PowerShell use `Copy-Item .env.example .env` instead of `cp`.
 
 | Item | Value |
 |---|---|
-| Test user email | `test@example.com` |
-| Test user password | `password` |
+| Test user 1 | `test@example.com` / `password` (owns 6 courses) |
+| Test user 2 | `other@example.com` / `password` (owns 4 courses) |
 | Courses | 10 sample courses: 8 published and 2 unpublished. At least 6 titles contain "Laravel", so `?search=Laravel` always returns results |
+
+Two users are seeded so the ownership rules can be tried: log in as one user and try to update or delete a course that belongs to the other (see **Authorization** below).
 
 ## Authentication
 
@@ -96,6 +100,12 @@ Accept: application/json
 ```
 
 Only `register` and `login` are public. Every courses endpoint and `logout` require a valid token.
+
+## Authorization
+
+- Any authenticated user can list and view all courses.
+- Only the owner of a course (the user who created it) can update or delete it. Anyone else receives `403 Forbidden` in the unified format. The check runs before validation, so a non-owner gets `403` even if the body is invalid.
+- Courses without an owner (`user_id` is `null`, for example after the owner's account is deleted) cannot be changed by anyone.
 
 ## API endpoints
 
@@ -109,8 +119,8 @@ Base URL: `http://127.0.0.1:8000/api`
 | GET | `/courses` | Yes | List courses (search, pagination, filter) | 200 |
 | POST | `/courses` | Yes | Create a course | 201 |
 | GET | `/courses/{id}` | Yes | Show one course | 200 |
-| PUT / PATCH | `/courses/{id}` | Yes | Update a course (partial updates are allowed) | 200 |
-| DELETE | `/courses/{id}` | Yes | Delete a course | 200 |
+| PUT / PATCH | `/courses/{id}` | Yes, owner only | Update a course (partial updates are allowed) | 200 |
+| DELETE | `/courses/{id}` | Yes, owner only | Delete a course | 200 |
 
 ### Request bodies
 
@@ -120,6 +130,8 @@ Base URL: `http://127.0.0.1:8000/api`
 | `POST /login` | `email` (required), `password` (required) |
 | `POST /courses` | `title` (required, max 255), `description` (optional), `price` (optional, 0 to 999999.99, default 0), `is_published` (optional boolean, default false) |
 | `PUT / PATCH /courses/{id}` | Same fields as create, all optional; only the fields you send are changed |
+
+The owner (`user_id`) is never read from the request body: it is always the authenticated user, so a `user_id` sent by the client is ignored.
 
 ### Query parameters for `GET /courses`
 
@@ -179,6 +191,7 @@ Paginated list (`GET /courses`):
     "items": [
       {
         "id": 10,
+        "user_id": 1,
         "title": "Laravel for Beginners",
         "description": "Start building web applications with Laravel.",
         "price": 49.99,
@@ -204,6 +217,7 @@ Login and register return `data.user`, `data.token` and `data.token_type` (`Bear
 | Status | When | `message` |
 |---|---|---|
 | 401 | Missing, invalid or revoked token, or wrong login credentials | `Unauthenticated` or `Invalid credentials` |
+| 403 | Updating or deleting a course that belongs to another user | `Forbidden` |
 | 404 | Unknown course or unknown route | `Resource not found` |
 | 405 | Wrong HTTP method for a route | `Method Not Allowed` |
 | 422 | Validation failed | `Validation Error` |
@@ -224,6 +238,31 @@ Import `postman_collection.json` into Postman.
 - Running **Login** or **Register** stores the token in the `token` variable automatically, and all other requests use it.
 - Running **Create course** stores the new id in `course_id`, which the show, update and delete requests use.
 - Register uses a random email on each run, so you can send it repeatedly (keep the rate limit in mind).
+- The **Ownership** folder logs in as the second user (stored in `token_other`), creates a course as the first user (stored in `owned_course_id`), and checks that the second user gets `403` on update and delete while the owner succeeds.
+- Every request has a status-code test, so the Collection Runner shows pass or fail for each one.
+
+## Tests
+
+The test suite uses PHPUnit and runs on an in-memory SQLite database, so it never touches your development database. It needs the `pdo_sqlite` PHP extension, which is enabled in most PHP installations.
+
+```bash
+php artisan test
+```
+
+Run a single test class, or a single test by name:
+
+```bash
+php artisan test --filter=CourseWriteTest
+php artisan test --filter="a non owner cannot delete a course"
+```
+
+| Test class | What it covers |
+|---|---|
+| `AuthenticationTest` | Register, login, logout, token revocation, rate limiting |
+| `CourseReadTest` | Listing, pagination, sorting, search, the `published` filter, show |
+| `CourseWriteTest` | Create, update, delete, and ownership (`403` for non-owners, courses without an owner) |
+| `UnifiedErrorResponseTest` | `401`, `404`, `405`, `422` and `500` in the unified format, including requests sent without an `Accept` header |
+| `TestEnvironmentTest` | Confirms the suite runs on in-memory SQLite and that the migrations build the schema |
 
 ## Project structure
 
@@ -234,14 +273,16 @@ app/
     Controllers/Api/                     AuthController, CourseController
     Requests/                            Form Requests (Auth, Course)
     Resources/                           UserResource, CourseResource
-  Models/                                User, Course (search, published, latest-first scopes)
+  Models/                                User, Course (owner relation, search, published, latest-first scopes)
+  Policies/CoursePolicy.php              Only the owner can update or delete a course
   Services/                              AuthService, CourseService
   Support/ApiResponse.php                Unified response builder
 database/
   factories/                             UserFactory, CourseFactory
-  migrations/                            users, cache, jobs, personal_access_tokens, courses
+  migrations/                            users, cache, jobs, personal_access_tokens, courses, courses.user_id
   seeders/                               DatabaseSeeder, CourseSeeder
 routes/api.php                           API routes
+tests/Feature/                           PHPUnit feature tests
 ```
 
 ## Code style
