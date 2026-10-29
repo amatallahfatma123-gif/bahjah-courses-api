@@ -21,6 +21,7 @@ Submitted as a technical assessment (Junior Backend Developer, Laravel).
 - PHP 8.2 or higher with the extensions: `pdo_mysql`, `mbstring`, `openssl`, `tokenizer`, `xml`, `ctype`, `json`, `fileinfo`, `curl`
 - Composer 2
 - MySQL 8 or MariaDB 10.6+
+- The `pdo_sqlite` extension, only needed to run the tests (see [Tests](#tests))
 
 > **Why Laravel 12?** The development environment runs PHP 8.2, and Laravel 13 requires PHP 8.3 or higher. Laravel 12 is the newest release that supports PHP 8.2, and it covers everything this task needs.
 
@@ -240,6 +241,29 @@ Import `postman_collection.json` into Postman.
 - The **Ownership** folder logs in as the second user (stored in `token_other`), creates a course as the first user (stored in `owned_course_id`), and checks that the second user gets `403` on update and delete while the owner succeeds.
 - Every request has a status-code test, so the Collection Runner shows pass or fail for each one.
 
+## Tests
+
+The test suite uses PHPUnit and runs on an in-memory SQLite database, so it never touches your development database. It needs the `pdo_sqlite` PHP extension, which is enabled in most PHP installations.
+
+```bash
+php artisan test
+```
+
+Run a single test class, or a single test by name:
+
+```bash
+php artisan test --filter=CourseWriteTest
+php artisan test --filter="a non owner cannot delete a course"
+```
+
+| Test class | What it covers |
+|---|---|
+| `AuthenticationTest` | Register, login, logout, token revocation, rate limiting |
+| `CourseReadTest` | Listing, pagination, sorting, search, the `published` filter, show |
+| `CourseWriteTest` | Create, update, delete, and ownership (`403` for non-owners, courses without an owner) |
+| `UnifiedErrorResponseTest` | `401`, `404`, `405`, `422` and `500` in the unified format, including requests sent without an `Accept` header |
+| `TestEnvironmentTest` | Confirms the suite runs on in-memory SQLite and that the migrations build the schema |
+
 ## Project structure
 
 ```
@@ -258,6 +282,7 @@ database/
   migrations/                            users, cache, jobs, personal_access_tokens, courses, courses.user_id
   seeders/                               DatabaseSeeder, CourseSeeder
 routes/api.php                           API routes
+tests/Feature/                           PHPUnit feature tests
 ```
 
 ## Code style
