@@ -27,6 +27,7 @@ final class CourseController extends Controller implements HasMiddleware
     public static function middleware(): array
     {
         return [
+            new Middleware('can:create,' . Course::class, only: ['store']),
             new Middleware('can:update,course', only: ['update']),
             new Middleware('can:delete,course', only: ['destroy']),
         ];
