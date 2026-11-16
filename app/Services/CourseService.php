@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\Course;
+use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -30,9 +31,9 @@ final class CourseService
     /**
      * @param  array<string, mixed>  $data
      */
-    public function create(array $data): Course
+    public function create(User $owner, array $data): Course
     {
-        return Course::query()->create($data)->refresh();
+        return $owner->courses()->create($data)->refresh();
     }
 
     /**

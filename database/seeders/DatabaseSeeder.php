@@ -16,6 +16,11 @@ class DatabaseSeeder extends Seeder
             'email' => 'test@example.com',
         ]);
 
+        User::factory()->create([
+            'name' => 'Other User',
+            'email' => 'other@example.com',
+        ]);
+
         $this->call(CourseSeeder::class);
     }
 }
