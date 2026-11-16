@@ -14,11 +14,25 @@ final class CourseService
     private const DEFAULT_PER_PAGE = 5;
 
     /**
+     * جلب الكورسات مع Search + Filter + Sort + Pagination.
+     *
+     * الفلترة حسب المستخدم:
+     * - الأدمن: كل الكورسات.
+     * - الطالب المعتمد: المنشور فقط.
+     *
      * @return LengthAwarePaginator<int, Course>
      */
-    public function paginate(?string $search, ?bool $published, ?int $perPage = null): LengthAwarePaginator
-    {
+    public function paginate(
+        User $user,
+        ?string $search,
+        ?bool $published,
+        ?int $perPage = null,
+    ): LengthAwarePaginator {
         return Course::query()
+            ->when(
+                ! $user->isAdmin(),
+                static fn (Builder $query): Builder => $query->where('is_published', true),
+            )
             ->search($search)
             ->when(
                 $published !== null,

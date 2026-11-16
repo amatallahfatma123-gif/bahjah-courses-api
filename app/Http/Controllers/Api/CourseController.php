@@ -35,7 +35,11 @@ final class CourseController extends Controller implements HasMiddleware
 
     public function index(IndexCourseRequest $request): JsonResponse
     {
+        /** @var User $user */
+        $user = $request->user();
+
         $courses = $this->courseService->paginate(
+            $user,
             $request->searchTerm(),
             $request->publishedFilter(),
             $request->perPage(),
@@ -56,6 +60,14 @@ final class CourseController extends Controller implements HasMiddleware
 
     public function show(Course $course): JsonResponse
     {
+        /** @var User $user */
+        $user = request()->user();
+
+        // الطالب يشوف المنشور فقط
+        if (! $user->isAdmin() && ! $course->is_published) {
+            return ApiResponse::error('Resource not found', 404);
+        }
+
         return ApiResponse::success('Course retrieved successfully', new CourseResource($course));
     }
 
