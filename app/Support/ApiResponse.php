@@ -41,16 +41,11 @@ final class ApiResponse
      */
     public static function error(string $message, int $status, ?array $errors = null, array $headers = []): JsonResponse
     {
-        $payload = [
+        return response()->json([
             'success' => false,
             'message' => $message,
             'data' => null,
-        ];
-
-        if ($errors !== null) {
-            $payload['errors'] = $errors;
-        }
-
-        return response()->json($payload, $status, $headers);
+            'errors' => $errors ?? new \stdClass(),
+        ], $status, $headers);
     }
 }

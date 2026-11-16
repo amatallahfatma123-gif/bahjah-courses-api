@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Enums\UserRole;
+use App\Enums\UserStatus;
 use App\Models\Course;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -14,9 +16,29 @@ final class CourseWriteTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * ينشئ طالب معتمد (approved student) ويعمل login.
+     */
     private function actAsUser(): User
     {
-        $user = User::factory()->create();
+        $user = User::factory()->create([
+            'role' => UserRole::STUDENT,
+            'status' => UserStatus::APPROVED,
+        ]);
+        Sanctum::actingAs($user);
+
+        return $user;
+    }
+
+    /**
+     * ينشئ أدمن ويعمل login.
+     */
+    private function actAsAdmin(): User
+    {
+        $user = User::factory()->create([
+            'role' => UserRole::ADMIN,
+            'status' => UserStatus::APPROVED,
+        ]);
         Sanctum::actingAs($user);
 
         return $user;
@@ -31,7 +53,7 @@ final class CourseWriteTest extends TestCase
     }
 
     // ------------------------------------------------------------------
-    // Create
+    // Create (Admin only)
     // ------------------------------------------------------------------
 
     public function test_creating_a_course_requires_authentication(): void
@@ -45,7 +67,7 @@ final class CourseWriteTest extends TestCase
 
     public function test_creating_a_course_returns_the_created_envelope_and_owner(): void
     {
-        $user = $this->actAsUser();
+        $admin = $this->actAsAdmin();
 
         $this->postJson('/api/courses', [
             'title' => 'Laravel for Beginners',
@@ -55,14 +77,14 @@ final class CourseWriteTest extends TestCase
         ])
             ->assertCreated()
             ->assertJson(['success' => true, 'message' => 'Course created successfully'])
-            ->assertJsonPath('data.user_id', $user->id)
+            ->assertJsonPath('data.user_id', $admin->id)
             ->assertJsonPath('data.title', 'Laravel for Beginners')
             ->assertJsonPath('data.description', 'Start here.')
             ->assertJsonPath('data.price', 49.5)
             ->assertJsonPath('data.is_published', true);
 
         $this->assertDatabaseHas('courses', [
-            'user_id' => $user->id,
+            'user_id' => $admin->id,
             'title' => 'Laravel for Beginners',
             'price' => 49.5,
             'is_published' => true,
@@ -71,7 +93,7 @@ final class CourseWriteTest extends TestCase
 
     public function test_creating_a_course_with_only_a_title_applies_the_defaults(): void
     {
-        $user = $this->actAsUser();
+        $admin = $this->actAsAdmin();
 
         $this->postJson('/api/courses', ['title' => 'Only a title'])
             ->assertCreated()
@@ -79,7 +101,7 @@ final class CourseWriteTest extends TestCase
             ->assertJsonPath('data.is_published', false);
 
         $this->assertDatabaseHas('courses', [
-            'user_id' => $user->id,
+            'user_id' => $admin->id,
             'title' => 'Only a title',
             'price' => 0,
             'is_published' => false,
@@ -88,20 +110,20 @@ final class CourseWriteTest extends TestCase
 
     public function test_creating_a_course_ignores_a_user_id_sent_in_the_body(): void
     {
-        $user = $this->actAsUser();
+        $admin = $this->actAsAdmin();
         $other = User::factory()->create();
 
         $this->postJson('/api/courses', ['title' => 'Spoofed owner', 'user_id' => $other->id])
             ->assertCreated()
-            ->assertJsonPath('data.user_id', $user->id);
+            ->assertJsonPath('data.user_id', $admin->id);
 
-        $this->assertDatabaseHas('courses', ['title' => 'Spoofed owner', 'user_id' => $user->id]);
+        $this->assertDatabaseHas('courses', ['title' => 'Spoofed owner', 'user_id' => $admin->id]);
         $this->assertDatabaseMissing('courses', ['user_id' => $other->id]);
     }
 
     public function test_creating_a_course_rejects_an_empty_body(): void
     {
-        $this->actAsUser();
+        $this->actAsAdmin();
 
         $this->postJson('/api/courses', [])
             ->assertUnprocessable()
@@ -113,7 +135,7 @@ final class CourseWriteTest extends TestCase
 
     public function test_creating_a_course_rejects_an_invalid_title(): void
     {
-        $this->actAsUser();
+        $this->actAsAdmin();
 
         $this->postJson('/api/courses', ['title' => str_repeat('a', 256)])
             ->assertUnprocessable()
@@ -128,7 +150,7 @@ final class CourseWriteTest extends TestCase
 
     public function test_creating_a_course_rejects_an_invalid_price(): void
     {
-        $this->actAsUser();
+        $this->actAsAdmin();
 
         foreach ([-1, 'free', 1000000] as $price) {
             $this->postJson('/api/courses', ['title' => 'Priced', 'price' => $price])
@@ -141,7 +163,7 @@ final class CourseWriteTest extends TestCase
 
     public function test_creating_a_course_rejects_an_invalid_published_flag(): void
     {
-        $this->actAsUser();
+        $this->actAsAdmin();
 
         $this->postJson('/api/courses', ['title' => 'Flagged', 'is_published' => 'maybe'])
             ->assertUnprocessable()
@@ -151,7 +173,7 @@ final class CourseWriteTest extends TestCase
     }
 
     // ------------------------------------------------------------------
-    // Update by the owner
+    // Update (Admin only)
     // ------------------------------------------------------------------
 
     public function test_updating_a_course_requires_authentication(): void
@@ -165,10 +187,10 @@ final class CourseWriteTest extends TestCase
         $this->assertDatabaseHas('courses', ['id' => $course->id, 'title' => 'Original']);
     }
 
-    public function test_the_owner_can_update_a_course_with_put(): void
+    public function test_an_admin_can_update_a_course_with_put(): void
     {
-        $user = $this->actAsUser();
-        $course = $this->courseOwnedBy($user, ['title' => 'Original', 'price' => 10, 'is_published' => false]);
+        $admin = $this->actAsAdmin();
+        $course = $this->courseOwnedBy($admin, ['title' => 'Original', 'price' => 10, 'is_published' => false]);
 
         $this->putJson("/api/courses/{$course->id}", [
             'title' => 'Updated title',
@@ -179,7 +201,7 @@ final class CourseWriteTest extends TestCase
             ->assertOk()
             ->assertJson(['success' => true, 'message' => 'Course updated successfully'])
             ->assertJsonPath('data.id', $course->id)
-            ->assertJsonPath('data.user_id', $user->id)
+            ->assertJsonPath('data.user_id', $admin->id)
             ->assertJsonPath('data.title', 'Updated title')
             ->assertJsonPath('data.price', 75.5)
             ->assertJsonPath('data.is_published', true);
@@ -192,10 +214,10 @@ final class CourseWriteTest extends TestCase
         ]);
     }
 
-    public function test_the_owner_can_partially_update_a_course_with_patch(): void
+    public function test_an_admin_can_partially_update_a_course_with_patch(): void
     {
-        $user = $this->actAsUser();
-        $course = $this->courseOwnedBy($user, ['title' => 'Keep this title', 'price' => 20, 'is_published' => false]);
+        $admin = $this->actAsAdmin();
+        $course = $this->courseOwnedBy($admin, ['title' => 'Keep this title', 'price' => 20, 'is_published' => false]);
 
         $this->patchJson("/api/courses/{$course->id}", ['is_published' => true])
             ->assertOk()
@@ -212,21 +234,21 @@ final class CourseWriteTest extends TestCase
 
     public function test_updating_a_course_cannot_change_its_owner(): void
     {
-        $user = $this->actAsUser();
+        $admin = $this->actAsAdmin();
         $other = User::factory()->create();
-        $course = $this->courseOwnedBy($user);
+        $course = $this->courseOwnedBy($admin);
 
         $this->putJson("/api/courses/{$course->id}", ['title' => 'Still mine', 'user_id' => $other->id])
             ->assertOk()
-            ->assertJsonPath('data.user_id', $user->id);
+            ->assertJsonPath('data.user_id', $admin->id);
 
-        $this->assertDatabaseHas('courses', ['id' => $course->id, 'user_id' => $user->id]);
+        $this->assertDatabaseHas('courses', ['id' => $course->id, 'user_id' => $admin->id]);
     }
 
     public function test_updating_a_course_rejects_invalid_data_and_changes_nothing(): void
     {
-        $user = $this->actAsUser();
-        $course = $this->courseOwnedBy($user, ['title' => 'Original', 'price' => 10]);
+        $admin = $this->actAsAdmin();
+        $course = $this->courseOwnedBy($admin, ['title' => 'Original', 'price' => 10]);
 
         $this->putJson("/api/courses/{$course->id}", ['title' => '', 'price' => -5])
             ->assertUnprocessable()
@@ -238,7 +260,7 @@ final class CourseWriteTest extends TestCase
 
     public function test_updating_an_unknown_course_returns_404(): void
     {
-        $this->actAsUser();
+        $this->actAsAdmin();
 
         $this->putJson('/api/courses/999999', ['title' => 'Nothing'])
             ->assertNotFound()
@@ -246,10 +268,10 @@ final class CourseWriteTest extends TestCase
     }
 
     // ------------------------------------------------------------------
-    // Update by someone else
+    // Update by a student (forbidden)
     // ------------------------------------------------------------------
 
-    public function test_a_non_owner_cannot_update_a_course_with_put(): void
+    public function test_a_student_cannot_update_a_course_with_put(): void
     {
         $this->actAsUser();
         $course = Course::factory()->create(['title' => 'Original', 'price' => 10]);
@@ -261,7 +283,7 @@ final class CourseWriteTest extends TestCase
         $this->assertDatabaseHas('courses', ['id' => $course->id, 'title' => 'Original', 'price' => 10]);
     }
 
-    public function test_a_non_owner_cannot_update_a_course_with_patch(): void
+    public function test_a_student_cannot_update_a_course_with_patch(): void
     {
         $this->actAsUser();
         $course = Course::factory()->unpublished()->create();
@@ -273,12 +295,11 @@ final class CourseWriteTest extends TestCase
         $this->assertDatabaseHas('courses', ['id' => $course->id, 'is_published' => false]);
     }
 
-    public function test_a_non_owner_gets_403_even_when_the_body_is_invalid(): void
+    public function test_a_student_gets_403_even_when_the_body_is_invalid(): void
     {
         $this->actAsUser();
         $course = Course::factory()->create(['title' => 'Original']);
 
-        // Authorization runs before validation, so this is 403 and not 422.
         $this->putJson("/api/courses/{$course->id}", ['title' => ''])
             ->assertForbidden();
 
@@ -286,7 +307,7 @@ final class CourseWriteTest extends TestCase
     }
 
     // ------------------------------------------------------------------
-    // Delete
+    // Delete (Admin only)
     // ------------------------------------------------------------------
 
     public function test_deleting_a_course_requires_authentication(): void
@@ -300,10 +321,10 @@ final class CourseWriteTest extends TestCase
         $this->assertDatabaseHas('courses', ['id' => $course->id]);
     }
 
-    public function test_the_owner_can_delete_a_course(): void
+    public function test_an_admin_can_delete_a_course(): void
     {
-        $user = $this->actAsUser();
-        $course = $this->courseOwnedBy($user);
+        $admin = $this->actAsAdmin();
+        $course = $this->courseOwnedBy($admin);
 
         $this->deleteJson("/api/courses/{$course->id}")
             ->assertOk()
@@ -316,9 +337,9 @@ final class CourseWriteTest extends TestCase
 
     public function test_deleting_a_course_leaves_the_other_courses_untouched(): void
     {
-        $user = $this->actAsUser();
-        $target = $this->courseOwnedBy($user);
-        $mine = $this->courseOwnedBy($user);
+        $admin = $this->actAsAdmin();
+        $target = $this->courseOwnedBy($admin);
+        $mine = $this->courseOwnedBy($admin);
         $theirs = Course::factory()->create();
 
         $this->deleteJson("/api/courses/{$target->id}")->assertOk();
@@ -328,7 +349,7 @@ final class CourseWriteTest extends TestCase
         $this->assertDatabaseHas('courses', ['id' => $theirs->id]);
     }
 
-    public function test_a_non_owner_cannot_delete_a_course(): void
+    public function test_a_student_cannot_delete_a_course(): void
     {
         $this->actAsUser();
         $course = Course::factory()->create();
@@ -340,15 +361,18 @@ final class CourseWriteTest extends TestCase
         $this->assertDatabaseHas('courses', ['id' => $course->id]);
     }
 
-    public function test_the_owner_can_still_delete_after_a_stranger_was_refused(): void
+    public function test_an_admin_can_still_delete_after_a_student_was_refused(): void
     {
-        $owner = User::factory()->create();
-        $course = $this->courseOwnedBy($owner);
+        $admin = User::factory()->create([
+            'role' => UserRole::ADMIN,
+            'status' => UserStatus::APPROVED,
+        ]);
+        $course = $this->courseOwnedBy($admin);
 
         $this->actAsUser();
         $this->deleteJson("/api/courses/{$course->id}")->assertForbidden();
 
-        Sanctum::actingAs($owner);
+        Sanctum::actingAs($admin);
         $this->deleteJson("/api/courses/{$course->id}")->assertOk();
 
         $this->assertDatabaseMissing('courses', ['id' => $course->id]);
@@ -356,7 +380,7 @@ final class CourseWriteTest extends TestCase
 
     public function test_deleting_an_unknown_course_returns_404(): void
     {
-        $this->actAsUser();
+        $this->actAsAdmin();
 
         $this->deleteJson('/api/courses/999999')
             ->assertNotFound()
@@ -364,8 +388,7 @@ final class CourseWriteTest extends TestCase
     }
 
     // ------------------------------------------------------------------
-    // Courses without an owner (user_id is null)
-    // Requires the user_id column to be nullable. If it is not, delete this section.
+    // Courses without an owner (user_id is null, for example after the owner's account is deleted)
     // ------------------------------------------------------------------
 
     public function test_nobody_can_update_a_course_that_has_no_owner(): void

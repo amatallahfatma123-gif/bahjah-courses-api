@@ -1,6 +1,8 @@
 <?php
 
 use App\Exceptions\ApiExceptionRenderer;
+use App\Http\Middleware\EnsureStudentIsApproved;
+use App\Http\Middleware\EnsureUserIsAdmin;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -15,6 +17,11 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->redirectGuestsTo(static fn (Request $request): ?string => null);
+
+        $middleware->alias([
+            'student.approved' => EnsureStudentIsApproved::class,
+            'admin' => EnsureUserIsAdmin::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         ApiExceptionRenderer::register($exceptions);

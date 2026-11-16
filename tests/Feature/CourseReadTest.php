@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Enums\UserRole;
+use App\Enums\UserStatus;
 use App\Models\Course;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -16,9 +18,15 @@ final class CourseReadTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * ينشئ طالب معتمد (approved student) ويعمل login.
+     */
     private function actAsUser(): User
     {
-        $user = User::factory()->create();
+        $user = User::factory()->create([
+            'role' => UserRole::STUDENT,
+            'status' => UserStatus::APPROVED,
+        ]);
         Sanctum::actingAs($user);
 
         return $user;
@@ -43,7 +51,7 @@ final class CourseReadTest extends TestCase
     public function test_listing_returns_the_paginated_envelope(): void
     {
         $this->actAsUser();
-        Course::factory()->count(7)->create();
+        Course::factory()->count(7)->published()->create();
 
         $this->getJson('/api/courses')
             ->assertOk()
@@ -64,9 +72,9 @@ final class CourseReadTest extends TestCase
     public function test_listing_is_sorted_newest_first(): void
     {
         $this->actAsUser();
-        $middle = Course::factory()->create(['created_at' => now()->subDays(2)]);
-        $newest = Course::factory()->create(['created_at' => now()->subDay()]);
-        $oldest = Course::factory()->create(['created_at' => now()->subDays(3)]);
+        $middle = Course::factory()->published()->create(['created_at' => now()->subDays(2)]);
+        $newest = Course::factory()->published()->create(['created_at' => now()->subDay()]);
+        $oldest = Course::factory()->published()->create(['created_at' => now()->subDays(3)]);
 
         $response = $this->getJson('/api/courses')->assertOk();
 
@@ -77,9 +85,9 @@ final class CourseReadTest extends TestCase
     {
         $this->actAsUser();
         $moment = now()->subHour();
-        $first = Course::factory()->create(['created_at' => $moment]);
-        $second = Course::factory()->create(['created_at' => $moment]);
-        $third = Course::factory()->create(['created_at' => $moment]);
+        $first = Course::factory()->published()->create(['created_at' => $moment]);
+        $second = Course::factory()->published()->create(['created_at' => $moment]);
+        $third = Course::factory()->published()->create(['created_at' => $moment]);
 
         $response = $this->getJson('/api/courses')->assertOk();
 
@@ -89,7 +97,7 @@ final class CourseReadTest extends TestCase
     public function test_the_second_page_returns_the_remaining_courses(): void
     {
         $this->actAsUser();
-        Course::factory()->count(7)->create();
+        Course::factory()->count(7)->published()->create();
 
         $pageOne = $this->getJson('/api/courses?page=1')->assertOk();
         $pageTwo = $this->getJson('/api/courses?page=2')
@@ -105,7 +113,7 @@ final class CourseReadTest extends TestCase
     public function test_per_page_controls_the_page_size(): void
     {
         $this->actAsUser();
-        Course::factory()->count(7)->create();
+        Course::factory()->count(7)->published()->create();
 
         $this->getJson('/api/courses?per_page=3')
             ->assertOk()
@@ -134,7 +142,7 @@ final class CourseReadTest extends TestCase
     public function test_a_page_beyond_the_last_returns_an_empty_list(): void
     {
         $this->actAsUser();
-        Course::factory()->count(7)->create();
+        Course::factory()->count(7)->published()->create();
 
         $this->getJson('/api/courses?page=99')
             ->assertOk()
@@ -159,9 +167,9 @@ final class CourseReadTest extends TestCase
     public function test_search_matches_the_title_case_insensitively(): void
     {
         $this->actAsUser();
-        Course::factory()->create(['title' => 'Laravel for Beginners']);
-        Course::factory()->create(['title' => 'Advanced laravel techniques']);
-        Course::factory()->create(['title' => 'PHP Fundamentals']);
+        Course::factory()->published()->create(['title' => 'Laravel for Beginners']);
+        Course::factory()->published()->create(['title' => 'Advanced laravel techniques']);
+        Course::factory()->published()->create(['title' => 'PHP Fundamentals']);
 
         $response = $this->getJson('/api/courses?search=Laravel')
             ->assertOk()
@@ -175,7 +183,7 @@ final class CourseReadTest extends TestCase
     public function test_search_with_no_match_returns_an_empty_list(): void
     {
         $this->actAsUser();
-        Course::factory()->count(3)->create(['title' => 'PHP Fundamentals']);
+        Course::factory()->count(3)->published()->create(['title' => 'PHP Fundamentals']);
 
         $this->getJson('/api/courses?search=zzzz')
             ->assertOk()
@@ -186,7 +194,7 @@ final class CourseReadTest extends TestCase
     public function test_an_empty_search_returns_all_courses(): void
     {
         $this->actAsUser();
-        Course::factory()->count(3)->create();
+        Course::factory()->count(3)->published()->create();
 
         $this->getJson('/api/courses?search=')
             ->assertOk()
@@ -212,7 +220,13 @@ final class CourseReadTest extends TestCase
 
     public function test_published_filter_returns_only_unpublished_courses(): void
     {
-        $this->actAsUser();
+        // الطالب مش بيشوف غير المنشور، فده اختبار للأدمن
+        $admin = User::factory()->create([
+            'role' => UserRole::ADMIN,
+            'status' => UserStatus::APPROVED,
+        ]);
+        Sanctum::actingAs($admin);
+
         Course::factory()->count(3)->published()->create();
         Course::factory()->count(2)->unpublished()->create();
 
@@ -232,7 +246,7 @@ final class CourseReadTest extends TestCase
         $this->actAsUser();
         Course::factory()->count(2)->withTopic('Laravel')->published()->create();
         Course::factory()->withTopic('Laravel')->unpublished()->create();
-        Course::factory()->create(['title' => 'PHP Fundamentals', 'is_published' => true]);
+        Course::factory()->published()->create(['title' => 'PHP Fundamentals']);
 
         $this->getJson('/api/courses?published=true&search=Laravel')
             ->assertOk()
@@ -252,10 +266,9 @@ final class CourseReadTest extends TestCase
     public function test_show_returns_a_course_owned_by_another_user(): void
     {
         $viewer = $this->actAsUser();
-        $course = Course::factory()->create([
+        $course = Course::factory()->published()->create([
             'title' => 'Laravel for Beginners',
             'price' => 49.5,
-            'is_published' => true,
         ]);
 
         $this->getJson("/api/courses/{$course->id}")
