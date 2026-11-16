@@ -1,976 +1,382 @@
 {
   "info": {
-    "name": "Bahjah Courses API",
-    "description": "Postman collection for the Bahjah Courses API (Laravel 12 + Sanctum). Run Auth > Login first: it stores the token used by every other request. Seeded users: test@example.com and other@example.com, both with the password `password`.",
+    "name": "Bahjah Courses API - Task 2",
+    "description": "Postman collection for the Bahjah Courses API (Laravel 12 + Sanctum) with roles and student approval.\n\nSeeded accounts (all with password `password`):\n- admin@example.com (admin, approved)\n- student.pending@example.com (student, pending)\n- student.approved@example.com (student, approved)\n\nRun requests in this order:\n1. Auth > Admin Login (stores admin_token)\n2. Auth > Pending Student Login (stores pending_token)\n3. Auth > Approved Student Login (stores approved_token)\n4. Admin - Students (list + approve)\n5. Admin - Courses (CRUD)\n6. Student Access (verify 403 for pending, 200 for approved, 403 on writes)",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
     "type": "bearer",
     "bearer": [
-      {
-        "key": "token",
-        "value": "{{token}}",
-        "type": "string"
-      }
+      { "key": "token", "value": "{{admin_token}}", "type": "string" }
     ]
   },
   "variable": [
-    {
-      "key": "base_url",
-      "value": "http://127.0.0.1:8000/api"
-    },
-    {
-      "key": "token",
-      "value": ""
-    },
-    {
-      "key": "course_id",
-      "value": ""
-    },
-    {
-      "key": "token_other",
-      "value": ""
-    },
-    {
-      "key": "owned_course_id",
-      "value": ""
-    }
+    { "key": "base_url", "value": "http://127.0.0.1:8000/api" },
+    { "key": "admin_token", "value": "" },
+    { "key": "pending_token", "value": "" },
+    { "key": "approved_token", "value": "" },
+    { "key": "course_id", "value": "" },
+    { "key": "pending_student_id", "value": "" }
   ],
   "item": [
     {
       "name": "Auth",
       "item": [
         {
-          "name": "Register",
+          "name": "Register (new student)",
           "request": {
             "method": "POST",
             "header": [
-              {
-                "key": "Accept",
-                "value": "application/json"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
             ],
-            "url": {
-              "raw": "{{base_url}}/register",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "register"
-              ]
-            },
+            "url": { "raw": "{{base_url}}/register", "host": ["{{base_url}}"], "path": ["register"] },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"{{$randomFullName}}\",\n  \"email\": \"{{$randomEmail}}\",\n  \"password\": \"password123\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
+              "raw": "{\n  \"name\": \"New Student\",\n  \"email\": \"{{$randomEmail}}\",\n  \"password\": \"password123\"\n}",
+              "options": { "raw": { "language": "json" } }
             },
-            "auth": {
-              "type": "noauth"
-            },
-            "description": "Expected: 201. Stores the token in the `token` variable. Shares the 10 requests per minute limit with Login."
+            "auth": { "type": "noauth" },
+            "description": "Expected: 201. New user is created with role=student and status=pending."
           },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "const json = pm.response.json();",
-                  "if (json.data && json.data.token) {",
-                  "    pm.collectionVariables.set('token', json.data.token);",
-                  "}",
-                  "pm.test('Status is 201', function () { pm.response.to.have.status(201); });"
-                ]
-              }
-            }
-          ]
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+            "const j = pm.response.json();",
+            "pm.test('Role is student', () => pm.expect(j.data.user.role).to.eql('student'));"
+          ]}}]
         },
         {
-          "name": "Login (test user)",
+          "name": "Register - forbidden role",
           "request": {
             "method": "POST",
             "header": [
-              {
-                "key": "Accept",
-                "value": "application/json"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
             ],
-            "url": {
-              "raw": "{{base_url}}/login",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "login"
-              ]
-            },
+            "url": { "raw": "{{base_url}}/register", "host": ["{{base_url}}"], "path": ["register"] },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"password\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
+              "raw": "{\n  \"name\": \"Hacker\",\n  \"email\": \"hacker@example.com\",\n  \"password\": \"password123\",\n  \"role\": \"admin\"\n}",
+              "options": { "raw": { "language": "json" } }
             },
-            "auth": {
-              "type": "noauth"
-            },
-            "description": "Expected: 200. Stores the token in the `token` variable."
+            "auth": { "type": "noauth" },
+            "description": "Expected: 422. The role field is prohibited during registration."
           },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "const json = pm.response.json();",
-                  "if (json.data && json.data.token) {",
-                  "    pm.collectionVariables.set('token', json.data.token);",
-                  "}",
-                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });"
-                ]
-              }
-            }
-          ]
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status is 422', () => pm.response.to.have.status(422));",
+            "pm.test('role error present', () => pm.expect(pm.response.json().errors).to.have.property('role'));"
+          ]}}]
+        },
+        {
+          "name": "Admin Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{base_url}}/login", "host": ["{{base_url}}"], "path": ["login"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@example.com\",\n  \"password\": \"password\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "auth": { "type": "noauth" },
+            "description": "Expected: 200. Stores the admin token in `admin_token`."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+            "const j = pm.response.json();",
+            "if (j.data && j.data.token) pm.collectionVariables.set('admin_token', j.data.token);"
+          ]}}]
+        },
+        {
+          "name": "Pending Student Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{base_url}}/login", "host": ["{{base_url}}"], "path": ["login"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"student.pending@example.com\",\n  \"password\": \"password\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "auth": { "type": "noauth" },
+            "description": "Expected: 200. Stores the pending student token in `pending_token`."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+            "const j = pm.response.json();",
+            "if (j.data && j.data.token) pm.collectionVariables.set('pending_token', j.data.token);"
+          ]}}]
+        },
+        {
+          "name": "Approved Student Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{base_url}}/login", "host": ["{{base_url}}"], "path": ["login"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"student.approved@example.com\",\n  \"password\": \"password\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "auth": { "type": "noauth" },
+            "description": "Expected: 200. Stores the approved student token in `approved_token`."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+            "const j = pm.response.json();",
+            "if (j.data && j.data.token) pm.collectionVariables.set('approved_token', j.data.token);"
+          ]}}]
         }
       ]
     },
     {
-      "name": "Courses",
+      "name": "Admin - Students",
       "item": [
         {
-          "name": "List courses",
+          "name": "List Students",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Accept",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/courses",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "courses"
-              ]
-            },
-            "description": "Expected: 200. Paginated, newest first, 5 per page."
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/students", "host": ["{{base_url}}"], "path": ["students"] },
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{admin_token}}", "type": "string" }] },
+            "description": "Expected: 200. Stores the first pending student id in `pending_student_id`."
           },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });"
-                ]
-              }
-            }
-          ]
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+            "const j = pm.response.json();",
+            "const pending = (j.data.items || []).find(s => s.status === 'pending');",
+            "if (pending) pm.collectionVariables.set('pending_student_id', pending.id);"
+          ]}}]
         },
         {
-          "name": "List courses - page 2",
+          "name": "List Students - filter pending",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Accept",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/courses?page=2",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "courses"
-              ],
-              "query": [
-                {
-                  "key": "page",
-                  "value": "2"
-                }
-              ]
-            }
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/students?status=pending", "host": ["{{base_url}}"], "path": ["students"], "query": [{ "key": "status", "value": "pending" }] },
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{admin_token}}", "type": "string" }] },
+            "description": "Expected: 200. Only pending students are returned."
           },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });"
-                ]
-              }
-            }
-          ]
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+            "const items = pm.response.json().data.items;",
+            "pm.test('All pending', () => items.forEach(i => pm.expect(i.status).to.eql('pending')));"
+          ]}}]
         },
         {
-          "name": "List courses - search",
+          "name": "Approve Student",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/students/{{pending_student_id}}/approve", "host": ["{{base_url}}"], "path": ["students", "{{pending_student_id}}", "approve"] },
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{admin_token}}", "type": "string" }] },
+            "description": "Expected: 200. The pending student becomes approved."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+            "pm.test('Status approved', () => pm.expect(pm.response.json().data.status).to.eql('approved'));"
+          ]}}]
+        },
+        {
+          "name": "List Students - as student (403)",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Accept",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/courses?search=Laravel",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "courses"
-              ],
-              "query": [
-                {
-                  "key": "search",
-                  "value": "Laravel"
-                }
-              ]
-            }
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/students", "host": ["{{base_url}}"], "path": ["students"] },
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{approved_token}}", "type": "string" }] },
+            "description": "Expected: 403. Students cannot list other students."
           },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });"
-                ]
-              }
-            }
-          ]
-        },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status is 403', () => pm.response.to.have.status(403));",
+            "pm.test('Message', () => pm.expect(pm.response.json().message).to.eql('Admin access required.'));"
+          ]}}]
+        }
+      ]
+    },
+    {
+      "name": "Admin - Courses",
+      "item": [
         {
-          "name": "List courses - published only",
+          "name": "List Courses (admin sees all)",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Accept",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/courses?published=true",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "courses"
-              ],
-              "query": [
-                {
-                  "key": "published",
-                  "value": "true"
-                }
-              ]
-            }
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/courses", "host": ["{{base_url}}"], "path": ["courses"] },
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{admin_token}}", "type": "string" }] },
+            "description": "Expected: 200. The admin sees published and unpublished courses (total 10)."
           },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });"
-                ]
-              }
-            }
-          ]
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+            "pm.test('Total is 10', () => pm.expect(pm.response.json().data.meta.total).to.eql(10));"
+          ]}}]
         },
         {
-          "name": "List courses - published + search + per_page",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Accept",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/courses?published=true&search=Laravel&per_page=3",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "courses"
-              ],
-              "query": [
-                {
-                  "key": "published",
-                  "value": "true"
-                },
-                {
-                  "key": "search",
-                  "value": "Laravel"
-                },
-                {
-                  "key": "per_page",
-                  "value": "3"
-                }
-              ]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Create course",
+          "name": "Create Course (admin)",
           "request": {
             "method": "POST",
             "header": [
-              {
-                "key": "Accept",
-                "value": "application/json"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
             ],
-            "url": {
-              "raw": "{{base_url}}/courses",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "courses"
-              ]
-            },
+            "url": { "raw": "{{base_url}}/courses", "host": ["{{base_url}}"], "path": ["courses"] },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"title\": \"REST APIs with Laravel\",\n  \"description\": \"Build and secure REST APIs.\",\n  \"price\": 49.5,\n  \"is_published\": true\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
+              "options": { "raw": { "language": "json" } }
             },
-            "description": "Expected: 201. Stores the new id in `course_id`."
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{admin_token}}", "type": "string" }] },
+            "description": "Expected: 201. Stores the id in `course_id`."
           },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "const json = pm.response.json();",
-                  "if (json.data && json.data.id) {",
-                  "    pm.collectionVariables.set('course_id', json.data.id);",
-                  "}",
-                  "pm.test('Status is 201', function () { pm.response.to.have.status(201); });"
-                ]
-              }
-            }
-          ]
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+            "const j = pm.response.json();",
+            "if (j.data && j.data.id) pm.collectionVariables.set('course_id', j.data.id);"
+          ]}}]
         },
         {
-          "name": "Show course",
+          "name": "Show Course",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Accept",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/courses/{{course_id}}",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "courses",
-                "{{course_id}}"
-              ]
-            },
-            "description": "Expected: 200 (404 if the course was deleted)."
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/courses/{{course_id}}", "host": ["{{base_url}}"], "path": ["courses", "{{course_id}}"] },
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{admin_token}}", "type": "string" }] },
+            "description": "Expected: 200."
           },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });"
-                ]
-              }
-            }
-          ]
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+          ]}}]
         },
         {
-          "name": "Update course (PUT)",
+          "name": "Update Course (admin, PUT)",
           "request": {
             "method": "PUT",
             "header": [
-              {
-                "key": "Accept",
-                "value": "application/json"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
             ],
-            "url": {
-              "raw": "{{base_url}}/courses/{{course_id}}",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "courses",
-                "{{course_id}}"
-              ]
-            },
+            "url": { "raw": "{{base_url}}/courses/{{course_id}}", "host": ["{{base_url}}"], "path": ["courses", "{{course_id}}"] },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"title\": \"REST APIs with Laravel (updated)\",\n  \"price\": 59,\n  \"is_published\": true\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
+              "options": { "raw": { "language": "json" } }
             },
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{admin_token}}", "type": "string" }] },
             "description": "Expected: 200."
           },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });"
-                ]
-              }
-            }
-          ]
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+          ]}}]
         },
         {
-          "name": "Update course (PATCH)",
-          "request": {
-            "method": "PATCH",
-            "header": [
-              {
-                "key": "Accept",
-                "value": "application/json"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/courses/{{course_id}}",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "courses",
-                "{{course_id}}"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"is_published\": false\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "description": "Expected: 200. Only the sent field changes."
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Delete course",
+          "name": "Delete Course (admin)",
           "request": {
             "method": "DELETE",
-            "header": [
-              {
-                "key": "Accept",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/courses/{{course_id}}",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "courses",
-                "{{course_id}}"
-              ]
-            },
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/courses/{{course_id}}", "host": ["{{base_url}}"], "path": ["courses", "{{course_id}}"] },
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{admin_token}}", "type": "string" }] },
             "description": "Expected: 200."
           },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Create course - validation error",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Accept",
-                "value": "application/json"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/courses",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "courses"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "description": "Expected: 422 with errors.title."
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status is 422', function () { pm.response.to.have.status(422); });"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "List courses - no token",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Accept",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/courses",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "courses"
-              ]
-            },
-            "auth": {
-              "type": "noauth"
-            },
-            "description": "Expected: 401 Unauthenticated."
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status is 401', function () { pm.response.to.have.status(401); });"
-                ]
-              }
-            }
-          ]
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+          ]}}]
         }
       ]
     },
     {
-      "name": "Ownership",
+      "name": "Student Access",
       "item": [
         {
-          "name": "Login (second user)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Accept",
-                "value": "application/json"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/login",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "login"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"other@example.com\",\n  \"password\": \"password\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "auth": {
-              "type": "noauth"
-            },
-            "description": "Expected: 200. Stores the second user's token in `token_other`."
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "const json = pm.response.json();",
-                  "if (json.data && json.data.token) {",
-                  "    pm.collectionVariables.set('token_other', json.data.token);",
-                  "}",
-                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Create course as first user",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Accept",
-                "value": "application/json"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/courses",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "courses"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"title\": \"Ownership demo course\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "description": "Expected: 201. The owner is the first user. Stores the id in `owned_course_id`."
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "const json = pm.response.json();",
-                  "if (json.data && json.data.id) {",
-                  "    pm.collectionVariables.set('owned_course_id', json.data.id);",
-                  "}",
-                  "pm.test('Status is 201', function () { pm.response.to.have.status(201); });"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Update someone else's course (PUT)",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Accept",
-                "value": "application/json"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/courses/{{owned_course_id}}",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "courses",
-                "{{owned_course_id}}"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"title\": \"Hijacked\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token_other}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "description": "Expected: 403 Forbidden (the second user is not the owner)."
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status is 403', function () { pm.response.to.have.status(403); });"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Delete someone else's course",
-          "request": {
-            "method": "DELETE",
-            "header": [
-              {
-                "key": "Accept",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/courses/{{owned_course_id}}",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "courses",
-                "{{owned_course_id}}"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token_other}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "description": "Expected: 403 Forbidden."
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status is 403', function () { pm.response.to.have.status(403); });"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Show someone else's course",
+          "name": "Pending Student - List Courses (403)",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Accept",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/courses/{{owned_course_id}}",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "courses",
-                "{{owned_course_id}}"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token_other}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "description": "Expected: 200. Reading is open to every authenticated user."
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/courses", "host": ["{{base_url}}"], "path": ["courses"] },
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{pending_token}}", "type": "string" }] },
+            "description": "Expected: 403. The pending student must wait for admin approval."
           },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });"
-                ]
-              }
-            }
-          ]
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status is 403', () => pm.response.to.have.status(403));",
+            "pm.test('Message', () => pm.expect(pm.response.json().message).to.eql('Your account is pending admin approval.'));"
+          ]}}]
         },
         {
-          "name": "Update own course (owner)",
+          "name": "Approved Student - List Courses (200)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/courses", "host": ["{{base_url}}"], "path": ["courses"] },
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{approved_token}}", "type": "string" }] },
+            "description": "Expected: 200. Only published courses are returned."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+            "const items = pm.response.json().data.items || [];",
+            "pm.test('All published', () => items.forEach(i => pm.expect(i.is_published).to.be.true));"
+          ]}}]
+        },
+        {
+          "name": "Approved Student - Create Course (403)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{base_url}}/courses", "host": ["{{base_url}}"], "path": ["courses"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Unauthorized Course\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{approved_token}}", "type": "string" }] },
+            "description": "Expected: 403. Only admins can create courses."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status is 403', () => pm.response.to.have.status(403));"
+          ]}}]
+        },
+        {
+          "name": "Approved Student - Update Course (403)",
           "request": {
             "method": "PUT",
             "header": [
-              {
-                "key": "Accept",
-                "value": "application/json"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
             ],
-            "url": {
-              "raw": "{{base_url}}/courses/{{owned_course_id}}",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "courses",
-                "{{owned_course_id}}"
-              ]
-            },
+            "url": { "raw": "{{base_url}}/courses/1", "host": ["{{base_url}}"], "path": ["courses", "1"] },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"title\": \"Ownership demo course (edited)\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
+              "raw": "{\n  \"title\": \"Hacked\"\n}",
+              "options": { "raw": { "language": "json" } }
             },
-            "description": "Expected: 200. The owner can update."
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{approved_token}}", "type": "string" }] },
+            "description": "Expected: 403. Only admins can update courses."
           },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });"
-                ]
-              }
-            }
-          ]
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status is 403', () => pm.response.to.have.status(403));"
+          ]}}]
         },
         {
-          "name": "Delete own course (owner)",
+          "name": "Approved Student - Delete Course (403)",
           "request": {
             "method": "DELETE",
-            "header": [
-              {
-                "key": "Accept",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/courses/{{owned_course_id}}",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "courses",
-                "{{owned_course_id}}"
-              ]
-            },
-            "description": "Expected: 200. The owner can delete."
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/courses/1", "host": ["{{base_url}}"], "path": ["courses", "1"] },
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{approved_token}}", "type": "string" }] },
+            "description": "Expected: 403. Only admins can delete courses."
           },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });"
-                ]
-              }
-            }
-          ]
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status is 403', () => pm.response.to.have.status(403));"
+          ]}}]
         }
       ]
     },
@@ -978,37 +384,17 @@
       "name": "Session",
       "item": [
         {
-          "name": "Logout",
+          "name": "Logout (approved student)",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Accept",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/logout",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "logout"
-              ]
-            },
-            "description": "Expected: 200. Deletes the current token (this folder runs last so the other requests keep a valid token). Log in again afterwards."
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/logout", "host": ["{{base_url}}"], "path": ["logout"] },
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{approved_token}}", "type": "string" }] },
+            "description": "Expected: 200. Deletes the current token."
           },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });"
-                ]
-              }
-            }
-          ]
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+          ]}}]
         }
       ]
     }
