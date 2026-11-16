@@ -1,6 +1,5 @@
-
 # Bahjah Courses API
-
+![CI](https://github.com/amatallahfatma123-gif/bahjah-courses-api/actions/workflows/ci.yml/badge.svg)
 A RESTful API for managing courses with **role-based access control** and a **student approval workflow**, built with **Laravel 12** and **Laravel Sanctum**.
 
 Submitted as a technical assessment (Junior Backend Developer, Laravel).
