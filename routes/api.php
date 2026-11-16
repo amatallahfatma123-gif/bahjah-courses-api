@@ -13,5 +13,20 @@ Route::middleware('throttle:10,1')->group(function (): void {
 
 Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('logout', [AuthController::class, 'logout']);
-    Route::apiResource('courses', CourseController::class);
+
+    // ============================================
+    // مسارات القراءة (تحتاج طالب معتمد أو أدمن)
+    // ============================================
+    Route::middleware('student.approved')->group(function (): void {
+        Route::get('courses', [CourseController::class, 'index']);
+        Route::get('courses/{course}', [CourseController::class, 'show']);
+    });
+
+    // ============================================
+    // مسارات الكتابة (تحتاج أدمن فقط — هنطبق الـ Policy في T3.3)
+    // ============================================
+    Route::post('courses', [CourseController::class, 'store']);
+    Route::put('courses/{course}', [CourseController::class, 'update']);
+    Route::patch('courses/{course}', [CourseController::class, 'update']);
+    Route::delete('courses/{course}', [CourseController::class, 'destroy']);
 });
